@@ -30,7 +30,7 @@ Requirements:
 - Discord desktop for manual Rich Presence testing.
 - Apple Music for Windows for end-to-end media testing.
 
-PowerShell on this machine may block `npm.ps1`; use `npm.cmd`.
+PowerShell may block `npm.ps1`; use `npm.cmd`.
 
 ```powershell
 npm.cmd install
