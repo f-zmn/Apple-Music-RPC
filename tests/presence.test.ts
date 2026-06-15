@@ -63,7 +63,7 @@ describe("presence mapping", () => {
       })
     );
 
-    expect(payload?.activity.largeImageUrl).toBe("http://127.0.0.1:12345/cover?hash=abc");
+    expect(payload?.activity.largeImageKey).toBe("http://127.0.0.1:12345/cover?hash=abc");
     expect(payload?.activity.largeImageText).toBe("Self Aware");
   });
 });

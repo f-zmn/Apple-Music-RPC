@@ -28,7 +28,7 @@ export function createPresencePayload(track: TrackState): PresencePayload | null
   };
 
   if (track.artworkUrl) {
-    activity.largeImageUrl = track.artworkUrl;
+    activity.largeImageKey = track.artworkUrl;
     activity.largeImageText = track.albumTitle ? truncate(track.albumTitle, MAX_TEXT_LENGTH) : details;
   }
 
@@ -51,7 +51,7 @@ export function createActivitySignature(activity: SetActivity): string {
     name: activity.name,
     details: activity.details,
     state: activity.state,
-    largeImageUrl: activity.largeImageUrl,
+    largeImageKey: activity.largeImageKey,
     startTimestamp: normalizeTimestampForSignature(activity.startTimestamp),
     endTimestamp: normalizeTimestampForSignature(activity.endTimestamp)
   });
