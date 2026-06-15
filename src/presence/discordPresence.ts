@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { Client } from "@xhayper/discord-rpc";
 import { createPresencePayload } from "./activity";
 import type { TrackState } from "../media/types";
+import type { Diagnostics } from "../diagnostics";
 
 type DiscordPresenceEvents = {
   status: [DiscordConnectionStatus];
@@ -21,10 +22,14 @@ export class DiscordPresence extends EventEmitter {
   private pendingTrack: TrackState | null = null;
   private lastSignature: string | null = null;
 
-  constructor(private readonly clientId: string | null) {
+  constructor(
+    private readonly clientId: string | null,
+    private readonly diagnostics?: Diagnostics
+  ) {
     super();
     if (!clientId) {
       this.setStatus("not-configured");
+      this.diagnostics?.info("discord.not_configured");
     }
   }
 
@@ -39,6 +44,7 @@ export class DiscordPresence extends EventEmitter {
   async connect(): Promise<void> {
     if (!this.clientId) {
       this.setStatus("not-configured");
+      this.diagnostics?.info("discord.connect_skipped_no_client_id");
       return;
     }
 
@@ -48,6 +54,7 @@ export class DiscordPresence extends EventEmitter {
 
     this.clearReconnectTimer();
     this.setStatus("connecting");
+    this.diagnostics?.info("discord.connecting");
 
     const client = new Client({ clientId: this.clientId });
     this.client = client;
@@ -55,6 +62,9 @@ export class DiscordPresence extends EventEmitter {
     client.on("ready", async () => {
       this.reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
       this.setStatus("connected");
+      this.diagnostics?.info("discord.ready", {
+        applicationName: this.client?.application?.name ?? null
+      });
       if (this.pendingTrack) {
         await this.setTrack(this.pendingTrack);
       }
@@ -64,6 +74,7 @@ export class DiscordPresence extends EventEmitter {
       this.client = null;
       this.lastSignature = null;
       this.setStatus("disconnected");
+      this.diagnostics?.info("discord.disconnected");
       this.scheduleReconnect();
     });
 
@@ -73,6 +84,7 @@ export class DiscordPresence extends EventEmitter {
       this.client = null;
       this.lastSignature = null;
       this.setStatus("disconnected");
+      this.diagnostics?.error("discord.login_failed", error);
       this.emitTyped("error", asError(error));
       this.scheduleReconnect();
     }
@@ -85,6 +97,7 @@ export class DiscordPresence extends EventEmitter {
 
   async disconnect(): Promise<void> {
     this.clearReconnectTimer();
+    this.diagnostics?.info("discord.disconnect");
     const client = this.client;
     this.client = null;
     this.lastSignature = null;
@@ -101,12 +114,16 @@ export class DiscordPresence extends EventEmitter {
 
     if (!track) {
       await this.clearActivity();
+      this.diagnostics?.info("presence.clear_no_track");
       return;
     }
 
     const payload = createPresencePayload(track);
     if (!payload) {
       await this.clearActivity();
+      this.diagnostics?.info("presence.clear_unpublishable_track", {
+        playbackState: track.playbackState
+      });
       return;
     }
 
@@ -115,6 +132,9 @@ export class DiscordPresence extends EventEmitter {
     }
 
     if (!this.client?.isConnected || !this.client.user) {
+      this.diagnostics?.info("presence.defer_until_connected", {
+        playbackState: track.playbackState
+      });
       void this.connect();
       return;
     }
@@ -122,7 +142,14 @@ export class DiscordPresence extends EventEmitter {
     try {
       await this.client.user.setActivity(payload.activity, process.pid);
       this.lastSignature = payload.signature;
+      this.diagnostics?.info("presence.set_ok", {
+        playbackState: track.playbackState,
+        hasTimestamps: Boolean(payload.activity.startTimestamp && payload.activity.endTimestamp)
+      });
     } catch (error) {
+      this.diagnostics?.error("presence.set_failed", error, {
+        playbackState: track.playbackState
+      });
       this.emitTyped("error", asError(error));
       this.lastSignature = null;
       this.setStatus("disconnected");
@@ -140,7 +167,9 @@ export class DiscordPresence extends EventEmitter {
 
     try {
       await this.client.user.clearActivity(process.pid);
+      this.diagnostics?.info("presence.clear_ok");
     } catch (error) {
+      this.diagnostics?.error("presence.clear_failed", error);
       this.emitTyped("error", asError(error));
       this.setStatus("disconnected");
       this.scheduleReconnect();
@@ -157,6 +186,9 @@ export class DiscordPresence extends EventEmitter {
       void this.connect();
     }, this.reconnectDelayMs);
 
+    this.diagnostics?.info("discord.reconnect_scheduled", {
+      delayMs: this.reconnectDelayMs
+    });
     this.reconnectDelayMs = Math.min(this.reconnectDelayMs * 2, MAX_RECONNECT_DELAY_MS);
   }
 

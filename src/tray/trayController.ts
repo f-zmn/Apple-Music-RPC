@@ -1,12 +1,14 @@
 import path from "node:path";
-import { app, Menu, nativeImage, Tray } from "electron";
+import { app, Menu, nativeImage, shell, Tray } from "electron";
 import { APP_NAME } from "../config";
 import type { DiscordConnectionStatus } from "../presence/discordPresence";
 import type { TrackState } from "../media/types";
 
 export type TrayCallbacks = {
   reconnectDiscord: () => void;
+  refreshMedia: () => void;
   clearActivity: () => void;
+  openDiagnostics: () => void;
   quit: () => void;
 };
 
@@ -74,8 +76,16 @@ export class TrayController {
           click: this.callbacks.reconnectDiscord
         },
         {
+          label: "Refresh Apple Music",
+          click: this.callbacks.refreshMedia
+        },
+        {
           label: "Clear Activity",
           click: this.callbacks.clearActivity
+        },
+        {
+          label: "Open Diagnostics",
+          click: this.callbacks.openDiagnostics
         },
         {
           label: "Start with Windows",
@@ -123,4 +133,8 @@ function formatDiscordStatus(status: DiscordConnectionStatus): string {
     case "disconnected":
       return "Disconnected";
   }
+}
+
+export function openPath(filePath: string): void {
+  void shell.openPath(filePath);
 }

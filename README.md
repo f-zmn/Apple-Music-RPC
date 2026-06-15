@@ -17,7 +17,7 @@ The client ID is not a secret. Do not commit Discord application secrets or toke
 3. Start Discord desktop.
 4. Play music in the Apple Music Windows app.
 
-The tray menu shows the current status, a reconnect command, a clear activity command, an autostart toggle, and quit.
+The tray menu shows the current status, reconnect and refresh commands, a clear activity command, diagnostics, an autostart toggle, and quit.
 
 Unsigned builds may trigger Windows SmartScreen. Code signing can be added later.
 
@@ -48,6 +48,8 @@ Tagged pushes like `v0.1.0` run the Windows release workflow and upload Setup an
 ## Privacy
 
 Music Presence processes track metadata locally and sends only the Rich Presence payload to the local Discord desktop client. It does not store listening history, upload data, or run a background network service.
+
+Diagnostics are written locally only and record connection/status events without track titles.
 
 ## Branding
 

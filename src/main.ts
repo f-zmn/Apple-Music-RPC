@@ -1,5 +1,7 @@
-import { app } from "electron";
+import path from "node:path";
+import { app, shell } from "electron";
 import { APP_NAME, APP_USER_MODEL_ID, loadDotEnv, resolveConfig } from "./config";
+import { Diagnostics } from "./diagnostics";
 import { MediaWorkerClient } from "./media/mediaWorkerClient";
 import type { TrackState } from "./media/types";
 import { DiscordPresence } from "./presence/discordPresence";
@@ -17,6 +19,7 @@ app.setAppUserModelId(APP_USER_MODEL_ID);
 let tray: TrayController | null = null;
 let mediaWorker: MediaWorkerClient | null = null;
 let discordPresence: DiscordPresence | null = null;
+let diagnostics: Diagnostics | null = null;
 
 app.on("second-instance", () => {
   mediaWorker?.refresh();
@@ -33,12 +36,26 @@ app.on("before-quit", () => {
 
 void app.whenReady().then(async () => {
   const config = resolveConfig();
-  discordPresence = new DiscordPresence(config.discordClientId);
+  diagnostics = new Diagnostics(path.join(app.getPath("userData"), "diagnostics.log"));
+  diagnostics.info("app.ready", {
+    packaged: app.isPackaged,
+    discordClientIdSource: config.discordClientIdSource,
+    hasDiscordClientId: Boolean(config.discordClientId),
+    appleMusicSourcePrefix: config.appleMusicSourcePrefix
+  });
+
+  discordPresence = new DiscordPresence(config.discordClientId, diagnostics);
   mediaWorker = new MediaWorkerClient(config.appleMusicSourcePrefix);
 
   tray = new TrayController({
     reconnectDiscord: () => void discordPresence?.reconnectNow(),
+    refreshMedia: () => mediaWorker?.refresh(),
     clearActivity: () => void discordPresence?.clearActivity(),
+    openDiagnostics: () => {
+      if (diagnostics) {
+        void shell.openPath(diagnostics.path);
+      }
+    },
     quit: () => app.quit()
   });
 
@@ -51,19 +68,29 @@ void app.whenReady().then(async () => {
   discordPresence.on("error", () => tray?.setDiscordStatus("disconnected"));
 
   mediaWorker.on("ready", () => {
+    diagnostics?.info("media.worker_ready");
     tray?.setMediaStatus("Waiting for Apple Music", null);
   });
 
   mediaWorker.on("track", (track) => {
+    diagnostics?.info("media.track", {
+      hasTrack: Boolean(track),
+      sourceAppId: track?.sourceAppId ?? null,
+      playbackState: track?.playbackState ?? null,
+      hasPosition: track?.positionSeconds !== null,
+      hasDuration: track?.durationSeconds !== null
+    });
     handleTrack(track);
   });
 
-  mediaWorker.on("error", () => {
+  mediaWorker.on("error", (error) => {
+    diagnostics?.error("media.worker_error", error);
     tray?.setMediaStatus("Unable to read Windows media sessions", null);
     void discordPresence?.clearActivity();
   });
 
-  mediaWorker.on("exit", () => {
+  mediaWorker.on("exit", (code) => {
+    diagnostics?.info("media.worker_exit", { code });
     tray?.setMediaStatus("Media worker stopped", null);
     void discordPresence?.clearActivity();
   });

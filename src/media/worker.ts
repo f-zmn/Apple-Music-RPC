@@ -1,8 +1,9 @@
 import { parentPort, workerData } from "node:worker_threads";
 import { SMTCMonitor } from "@coooookies/windows-smtc-monitor";
-import { DEFAULT_APPLE_MUSIC_SOURCE_PREFIX } from "../config";
 import { normalizeTrackState, pickAppleMusicSession } from "./session";
 import type { MediaWorkerCommand, MediaWorkerMessage, RawMediaInfo } from "./types";
+
+const DEFAULT_APPLE_MUSIC_SOURCE_PREFIX = "AppleInc.AppleMusicWin";
 
 const sourcePrefix =
   typeof workerData?.sourcePrefix === "string" && workerData.sourcePrefix.trim()
