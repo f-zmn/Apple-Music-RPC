@@ -12,7 +12,7 @@ The client ID is not a secret. Do not commit Discord application secrets or toke
 
 ## User Install
 
-1. Download the latest Windows installer or portable EXE from GitHub Releases.
+1. Download the latest Windows installer or portable EXE [here](https://github.com/f-zmn/Apple-Music-RPC/releases).
 2. Start Music Presence.
 3. Start Discord desktop.
 4. Play music in the Apple Music Windows app.
@@ -41,10 +41,6 @@ npm.cmd run build
 npm.cmd run dist:win
 ```
 
-Optional local overrides can be placed in `.env`, using `.env.example` as a template.
-
-Tagged pushes like `v0.1.0` run the Windows release workflow and upload Setup and Portable EXE artifacts to the GitHub Release.
-
 ## Privacy
 
 Music Presence processes track metadata locally and sends only the Rich Presence payload to the local Discord desktop client. It does not store listening history, upload data, or run a background network service.
@@ -53,7 +49,7 @@ Album covers are served only from a temporary `127.0.0.1` URL while the app is r
 
 ## Branding
 
-This is not an official Apple or Discord app. The project intentionally uses a neutral name and original icon. Do not add Apple logos, Apple Music app icons, album artwork, or graphics copied from Apple websites/apps to this repository.
+This is not an official Apple or Discord app. 
 
 ## License
 
