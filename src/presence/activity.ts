@@ -19,12 +19,18 @@ export function createPresencePayload(track: TrackState): PresencePayload | null
   const baseArtist = truncate(track.artist, MAX_TEXT_LENGTH);
   const state = track.playbackState === "paused" ? truncate(`Paused - ${baseArtist}`, MAX_TEXT_LENGTH) : baseArtist;
   const activity: SetActivity = {
+    name: truncate(`${track.title} auf Apple Music`, MAX_TEXT_LENGTH),
     type: ACTIVITY_TYPE_LISTENING,
     details,
     state,
     instance: false,
     statusDisplayType: 2
   };
+
+  if (track.artworkUrl) {
+    activity.largeImageUrl = track.artworkUrl;
+    activity.largeImageText = track.albumTitle ? truncate(track.albumTitle, MAX_TEXT_LENGTH) : details;
+  }
 
   const timestamps = createTimestamps(track);
   if (track.playbackState === "playing" && timestamps) {
@@ -42,8 +48,10 @@ export function createPresencePayload(track: TrackState): PresencePayload | null
 export function createActivitySignature(activity: SetActivity): string {
   return JSON.stringify({
     type: activity.type,
+    name: activity.name,
     details: activity.details,
     state: activity.state,
+    largeImageUrl: activity.largeImageUrl,
     startTimestamp: normalizeTimestampForSignature(activity.startTimestamp),
     endTimestamp: normalizeTimestampForSignature(activity.endTimestamp)
   });

@@ -16,6 +16,7 @@ export type RawMediaInfo = {
     artist?: string;
     albumTitle?: string;
     albumArtist?: string;
+    thumbnail?: Uint8Array;
   };
   playback: {
     playbackStatus?: number;
@@ -27,11 +28,19 @@ export type RawMediaInfo = {
   lastUpdatedTime?: number;
 };
 
+export type TrackArtwork = {
+  dataBase64: string;
+  hash: string;
+  mimeType: string;
+};
+
 export type TrackState = {
   sourceAppId: string;
   title: string;
   artist: string;
   albumTitle: string;
+  artwork: TrackArtwork | null;
+  artworkUrl?: string | null;
   playbackState: PlaybackState;
   positionSeconds: number | null;
   durationSeconds: number | null;

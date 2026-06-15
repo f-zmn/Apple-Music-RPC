@@ -4,6 +4,7 @@ import { APP_NAME, APP_USER_MODEL_ID, loadDotEnv, resolveConfig } from "./config
 import { Diagnostics } from "./diagnostics";
 import { MediaWorkerClient } from "./media/mediaWorkerClient";
 import type { TrackState } from "./media/types";
+import { ArtworkServer } from "./presence/artworkServer";
 import { DiscordPresence } from "./presence/discordPresence";
 import { TrayController } from "./tray/trayController";
 
@@ -20,6 +21,7 @@ let tray: TrayController | null = null;
 let mediaWorker: MediaWorkerClient | null = null;
 let discordPresence: DiscordPresence | null = null;
 let diagnostics: Diagnostics | null = null;
+let artworkServer: ArtworkServer | null = null;
 
 app.on("second-instance", () => {
   mediaWorker?.refresh();
@@ -31,6 +33,7 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   mediaWorker?.stop();
+  artworkServer?.close();
   tray?.destroy();
 });
 
@@ -45,6 +48,8 @@ void app.whenReady().then(async () => {
   });
 
   discordPresence = new DiscordPresence(config.discordClientId, diagnostics);
+  artworkServer = new ArtworkServer(diagnostics);
+  await artworkServer.start();
   mediaWorker = new MediaWorkerClient(config.appleMusicSourcePrefix);
 
   tray = new TrayController({
@@ -77,6 +82,7 @@ void app.whenReady().then(async () => {
       hasTrack: Boolean(track),
       sourceAppId: track?.sourceAppId ?? null,
       playbackState: track?.playbackState ?? null,
+      hasArtwork: Boolean(track?.artwork),
       hasPosition: track?.positionSeconds !== null,
       hasDuration: track?.durationSeconds !== null
     });
@@ -101,13 +107,20 @@ void app.whenReady().then(async () => {
 
 function handleTrack(track: TrackState | null): void {
   if (!track) {
+    artworkServer?.updateArtwork(null);
     tray?.setMediaStatus("Waiting for Apple Music", null);
     void discordPresence?.clearActivity();
     return;
   }
 
-  tray?.setMediaStatus(formatTrackStatus(track), track);
-  void discordPresence?.setTrack(track);
+  const artworkUrl = artworkServer?.updateArtwork(track.artwork) ?? null;
+  const publishableTrack: TrackState = {
+    ...track,
+    artworkUrl
+  };
+
+  tray?.setMediaStatus(formatTrackStatus(publishableTrack), publishableTrack);
+  void discordPresence?.setTrack(publishableTrack);
 }
 
 function formatTrackStatus(track: TrackState): string {

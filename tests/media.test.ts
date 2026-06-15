@@ -40,6 +40,7 @@ describe("media session selection", () => {
 
     expect(track.title).toBe("Unknown title");
     expect(track.artist).toBe("Album Artist");
+    expect(track.artwork).toBeNull();
     expect(track.playbackState).toBe("playing");
     expect(track.positionSeconds).toBe(12.4);
     expect(track.durationSeconds).toBe(180);
@@ -50,12 +51,13 @@ describe("media session selection", () => {
 function createSession(sourceAppId: string, title: string, playbackStatus: PlaybackStatusCode): RawMediaInfo {
   return {
     sourceAppId,
-    media: {
-      title,
-      artist: "Artist",
-      albumTitle: "",
-      albumArtist: ""
-    },
+      media: {
+        title,
+        artist: "Artist",
+        albumTitle: "",
+        albumArtist: "",
+        thumbnail: undefined
+      },
     playback: {
       playbackStatus
     },

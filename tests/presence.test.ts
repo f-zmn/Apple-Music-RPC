@@ -14,6 +14,7 @@ describe("presence mapping", () => {
     );
 
     expect(payload?.activity.type).toBe(2);
+    expect(payload?.activity.name).toBe("Feel auf Apple Music");
     expect(payload?.activity.details).toBe("Feel");
     expect(payload?.activity.state).toBe("XIRA");
     expect(payload?.activity.startTimestamp).toEqual(new Date(1_700_000_000_000));
@@ -53,6 +54,18 @@ describe("presence mapping", () => {
     expect(payload?.activity.startTimestamp).toBeUndefined();
     expect(payload?.activity.endTimestamp).toBeUndefined();
   });
+
+  it("uses the local artwork URL as large image when available", () => {
+    const payload = createPresencePayload(
+      createTrack({
+        artworkUrl: "http://127.0.0.1:12345/cover?hash=abc",
+        albumTitle: "Self Aware"
+      })
+    );
+
+    expect(payload?.activity.largeImageUrl).toBe("http://127.0.0.1:12345/cover?hash=abc");
+    expect(payload?.activity.largeImageText).toBe("Self Aware");
+  });
 });
 
 function createTrack(overrides: Partial<TrackState> = {}): TrackState {
@@ -61,6 +74,8 @@ function createTrack(overrides: Partial<TrackState> = {}): TrackState {
     title: "Feel",
     artist: "XIRA",
     albumTitle: "",
+    artwork: null,
+    artworkUrl: null,
     playbackState: "playing",
     positionSeconds: 0,
     durationSeconds: 180,
