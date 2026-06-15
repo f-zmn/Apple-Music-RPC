@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "dist:win": "npm run generate:icon && npm run build && electron-builder --win nsis portable"
+    "dist:win": "npm run generate:icon && npm run build && electron-builder --win nsis portable --publish never"
   },
   "keywords": [
     "discord",
