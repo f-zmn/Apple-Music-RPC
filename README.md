@@ -2,7 +2,7 @@
 
 Music Presence is a Windows tray app that shows the current Apple Music track and album cover as Discord Rich Presence.
 
-It reads local playback state and cover artwork from Windows System Media Transport Controls (SMTC) and talks to the local Discord desktop client through Discord RPC. It does not use an Apple account, Apple Music API, Discord bot token, backend service, analytics, or telemetry.
+It reads local playback state from Windows System Media Transport Controls (SMTC), resolves cover artwork through Apple's public iTunes Search API, and talks to the local Discord desktop client through Discord RPC. It does not use an Apple account, Apple Music developer token, Discord bot token, backend service, analytics, or telemetry.
 
 ## Status
 
@@ -43,9 +43,9 @@ npm.cmd run dist:win
 
 ## Privacy
 
-Music Presence processes track metadata locally and sends only the Rich Presence payload to the local Discord desktop client. It does not store listening history, upload data, or run a background network service.
+Music Presence processes track metadata locally and sends only the Rich Presence payload to the local Discord desktop client. To show cover artwork, it sends the current title and artist to Apple's public iTunes Search API and uses the returned artwork URL. It does not store listening history, upload cover files, or run a background network service.
 
-Album covers are served only from a temporary `127.0.0.1` URL while the app is running. Diagnostics are written locally only and record connection/status events without track titles.
+Diagnostics are written locally only and record connection/status events without track titles.
 
 ## Branding
 

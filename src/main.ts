@@ -4,7 +4,7 @@ import { APP_NAME, APP_USER_MODEL_ID, loadDotEnv, resolveConfig } from "./config
 import { Diagnostics } from "./diagnostics";
 import { MediaWorkerClient } from "./media/mediaWorkerClient";
 import type { TrackState } from "./media/types";
-import { ArtworkServer } from "./presence/artworkServer";
+import { ArtworkResolver, resolveCountryCode } from "./presence/artworkResolver";
 import { DiscordPresence } from "./presence/discordPresence";
 import { TrayController } from "./tray/trayController";
 
@@ -21,7 +21,8 @@ let tray: TrayController | null = null;
 let mediaWorker: MediaWorkerClient | null = null;
 let discordPresence: DiscordPresence | null = null;
 let diagnostics: Diagnostics | null = null;
-let artworkServer: ArtworkServer | null = null;
+let artworkResolver: ArtworkResolver | null = null;
+let trackSequence = 0;
 
 app.on("second-instance", () => {
   mediaWorker?.refresh();
@@ -33,7 +34,6 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   mediaWorker?.stop();
-  artworkServer?.close();
   tray?.destroy();
 });
 
@@ -48,8 +48,10 @@ void app.whenReady().then(async () => {
   });
 
   discordPresence = new DiscordPresence(config.discordClientId, diagnostics);
-  artworkServer = new ArtworkServer(diagnostics);
-  await artworkServer.start();
+  artworkResolver = new ArtworkResolver({
+    countryCode: resolveCountryCode(app.getLocale()),
+    diagnostics
+  });
   mediaWorker = new MediaWorkerClient(config.appleMusicSourcePrefix);
 
   tray = new TrayController({
@@ -86,7 +88,7 @@ void app.whenReady().then(async () => {
       hasPosition: track?.positionSeconds !== null,
       hasDuration: track?.durationSeconds !== null
     });
-    handleTrack(track);
+    void handleTrack(track);
   });
 
   mediaWorker.on("error", (error) => {
@@ -105,15 +107,20 @@ void app.whenReady().then(async () => {
   await discordPresence.connect();
 });
 
-function handleTrack(track: TrackState | null): void {
+async function handleTrack(track: TrackState | null): Promise<void> {
+  const sequence = ++trackSequence;
+
   if (!track) {
-    artworkServer?.updateArtwork(null);
     tray?.setMediaStatus("Waiting for Apple Music", null);
     void discordPresence?.clearActivity();
     return;
   }
 
-  const artworkUrl = artworkServer?.updateArtwork(track.artwork) ?? null;
+  const artworkUrl = (await artworkResolver?.resolve(track)) ?? null;
+  if (sequence !== trackSequence) {
+    return;
+  }
+
   const publishableTrack: TrackState = {
     ...track,
     artworkUrl
