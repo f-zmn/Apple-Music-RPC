@@ -116,14 +116,15 @@ async function handleTrack(track: TrackState | null): Promise<void> {
     return;
   }
 
-  const artworkUrl = (await artworkResolver?.resolve(track)) ?? null;
+  const metadata = (await artworkResolver?.resolve(track)) ?? { artworkUrl: null, trackUrl: null };
   if (sequence !== trackSequence) {
     return;
   }
 
   const publishableTrack: TrackState = {
     ...track,
-    artworkUrl
+    artworkUrl: metadata.artworkUrl,
+    trackUrl: metadata.trackUrl
   };
 
   tray?.setMediaStatus(formatTrackStatus(publishableTrack), publishableTrack);

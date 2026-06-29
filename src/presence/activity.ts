@@ -8,6 +8,7 @@ export type PresencePayload = {
 };
 
 const ACTIVITY_TYPE_LISTENING = 2;
+const APPLE_MUSIC_BUTTON_LABEL = "In Apple Music öffnen";
 const MAX_TEXT_LENGTH = 128;
 
 export function createPresencePayload(track: TrackState): PresencePayload | null {
@@ -32,6 +33,15 @@ export function createPresencePayload(track: TrackState): PresencePayload | null
     activity.largeImageText = track.albumTitle ? truncate(track.albumTitle, MAX_TEXT_LENGTH) : details;
   }
 
+  if (track.trackUrl) {
+    activity.buttons = [
+      {
+        label: APPLE_MUSIC_BUTTON_LABEL,
+        url: track.trackUrl
+      }
+    ];
+  }
+
   const timestamps = createTimestamps(track);
   if (track.playbackState === "playing" && timestamps) {
     activity.startTimestamp = timestamps.startTimestamp;
@@ -52,6 +62,7 @@ export function createActivitySignature(activity: SetActivity): string {
     details: activity.details,
     state: activity.state,
     largeImageKey: activity.largeImageKey,
+    buttons: activity.buttons,
     startTimestamp: normalizeTimestampForSignature(activity.startTimestamp),
     endTimestamp: normalizeTimestampForSignature(activity.endTimestamp)
   });

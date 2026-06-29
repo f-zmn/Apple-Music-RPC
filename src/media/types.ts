@@ -41,6 +41,7 @@ export type TrackState = {
   albumTitle: string;
   artwork: TrackArtwork | null;
   artworkUrl?: string | null;
+  trackUrl?: string | null;
   playbackState: PlaybackState;
   positionSeconds: number | null;
   durationSeconds: number | null;

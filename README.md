@@ -1,6 +1,6 @@
 # Music Presence
 
-Music Presence is a Windows tray app that shows the current Apple Music track and album cover as Discord Rich Presence.
+Music Presence is a Windows tray app that shows the current Apple Music track and album cover as Discord Rich Presence, with a button to open the song on Apple Music web.
 
 It reads local playback state from Windows System Media Transport Controls (SMTC), resolves cover artwork through Apple's public iTunes Search API, and talks to the local Discord desktop client through Discord RPC. It does not use an Apple account, Apple Music developer token, Discord bot token, backend service, analytics, or telemetry.
 

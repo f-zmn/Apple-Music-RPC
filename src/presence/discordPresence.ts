@@ -145,6 +145,7 @@ export class DiscordPresence extends EventEmitter {
       this.diagnostics?.info("presence.set_ok", {
         playbackState: track.playbackState,
         hasLargeImage: Boolean(payload.activity.largeImageKey),
+        hasButton: Boolean(payload.activity.buttons?.length),
         hasTimestamps: Boolean(payload.activity.startTimestamp && payload.activity.endTimestamp)
       });
     } catch (error) {

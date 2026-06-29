@@ -6,6 +6,7 @@ type ArtworkSearchResult = {
   artistName?: string;
   artworkUrl100?: string;
   collectionName?: string;
+  trackViewUrl?: string;
   trackName?: string;
 };
 
@@ -16,24 +17,29 @@ type ArtworkSearchResponse = {
 
 const LOOKUP_TIMEOUT_MS = 4_000;
 
+export type ArtworkResolution = {
+  artworkUrl: string | null;
+  trackUrl: string | null;
+};
+
 export type ArtworkResolverOptions = {
   countryCode: string;
   diagnostics?: Diagnostics;
 };
 
 export class ArtworkResolver {
-  private readonly cache = new Map<string, string | null>();
-  private readonly inFlight = new Map<string, Promise<string | null>>();
+  private readonly cache = new Map<string, ArtworkResolution>();
+  private readonly inFlight = new Map<string, Promise<ArtworkResolution>>();
   private readonly countryCode: string;
 
   constructor(private readonly options: ArtworkResolverOptions) {
     this.countryCode = normalizeCountryCode(options.countryCode);
   }
 
-  async resolve(track: TrackState): Promise<string | null> {
+  async resolve(track: TrackState): Promise<ArtworkResolution> {
     const cacheKey = createCacheKey(track);
     if (this.cache.has(cacheKey)) {
-      return this.cache.get(cacheKey) ?? null;
+      return this.cache.get(cacheKey) ?? emptyResolution();
     }
 
     const activeLookup = this.inFlight.get(cacheKey);
@@ -43,18 +49,20 @@ export class ArtworkResolver {
 
     const cacheHash = hashCacheKey(cacheKey);
     const lookup = this.lookup(track)
-      .then((artworkUrl) => {
-        this.cache.set(cacheKey, artworkUrl);
+      .then((resolution) => {
+        this.cache.set(cacheKey, resolution);
         this.options.diagnostics?.info("artwork.resolved", {
           cacheHash,
-          hasArtworkUrl: Boolean(artworkUrl)
+          hasArtworkUrl: Boolean(resolution.artworkUrl),
+          hasTrackUrl: Boolean(resolution.trackUrl)
         });
-        return artworkUrl;
+        return resolution;
       })
       .catch((error) => {
-        this.cache.set(cacheKey, null);
+        const fallback = emptyResolution();
+        this.cache.set(cacheKey, fallback);
         this.options.diagnostics?.error("artwork.resolve_failed", error, { cacheHash });
-        return null;
+        return fallback;
       })
       .finally(() => {
         this.inFlight.delete(cacheKey);
@@ -64,7 +72,7 @@ export class ArtworkResolver {
     return lookup;
   }
 
-  private async lookup(track: TrackState): Promise<string | null> {
+  private async lookup(track: TrackState): Promise<ArtworkResolution> {
     const queries = createSearchQueries(track);
     for (const query of queries) {
       const controller = new AbortController();
@@ -81,13 +89,13 @@ export class ArtworkResolver {
       }
 
       const data = (await response.json()) as ArtworkSearchResponse;
-      const artworkUrl = pickBestArtworkUrl(data.results ?? [], track);
-      if (artworkUrl) {
-        return artworkUrl;
+      const resolution = pickBestResolution(data.results ?? [], track);
+      if (resolution.artworkUrl || resolution.trackUrl) {
+        return resolution;
       }
     }
 
-    return null;
+    return emptyResolution();
   }
 }
 
@@ -119,15 +127,34 @@ export function cleanSearchArtist(artist: string): string {
 }
 
 export function pickBestArtworkUrl(results: ArtworkSearchResult[], track: Pick<TrackState, "artist" | "title">): string | null {
+  return pickBestResolution(results, track).artworkUrl;
+}
+
+export function pickBestTrackUrl(results: ArtworkSearchResult[], track: Pick<TrackState, "artist" | "title">): string | null {
+  return pickBestResolution(results, track).trackUrl;
+}
+
+export function pickBestResolution(
+  results: ArtworkSearchResult[],
+  track: Pick<TrackState, "artist" | "title">
+): ArtworkResolution {
   const scored = results
     .map((result) => ({
       result,
       score: scoreResult(result, track)
     }))
-    .filter(({ result, score }) => score > 0 && Boolean(result.artworkUrl100))
+    .filter(({ result, score }) => score > 0 && (Boolean(result.artworkUrl100) || Boolean(result.trackViewUrl)))
     .sort((a, b) => b.score - a.score);
 
-  return scored[0]?.result.artworkUrl100 ? upgradeArtworkUrl(scored[0].result.artworkUrl100) : null;
+  const best = scored[0]?.result;
+  if (!best) {
+    return emptyResolution();
+  }
+
+  return {
+    artworkUrl: best.artworkUrl100 ? upgradeArtworkUrl(best.artworkUrl100) : null,
+    trackUrl: best.trackViewUrl ? normalizeAppleMusicTrackUrl(best.trackViewUrl) : null
+  };
 }
 
 export function upgradeArtworkUrl(url: string): string {
@@ -164,6 +191,26 @@ function scoreResult(result: ArtworkSearchResult, track: Pick<TrackState, "artis
   }
 
   return score;
+}
+
+function emptyResolution(): ArtworkResolution {
+  return {
+    artworkUrl: null,
+    trackUrl: null
+  };
+}
+
+function normalizeAppleMusicTrackUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" || parsed.hostname !== "music.apple.com") {
+      return null;
+    }
+
+    return parsed.toString();
+  } catch {
+    return null;
+  }
 }
 
 function createCacheKey(track: Pick<TrackState, "artist" | "title">): string {

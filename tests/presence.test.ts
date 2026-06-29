@@ -55,16 +55,31 @@ describe("presence mapping", () => {
     expect(payload?.activity.endTimestamp).toBeUndefined();
   });
 
-  it("uses the local artwork URL as large image when available", () => {
+  it("uses the artwork URL as large image when available", () => {
     const payload = createPresencePayload(
       createTrack({
-        artworkUrl: "http://127.0.0.1:12345/cover?hash=abc",
+        artworkUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music/cover.jpg/512x512bb.jpg",
         albumTitle: "Self Aware"
       })
     );
 
-    expect(payload?.activity.largeImageKey).toBe("http://127.0.0.1:12345/cover?hash=abc");
+    expect(payload?.activity.largeImageKey).toBe("https://is1-ssl.mzstatic.com/image/thumb/Music/cover.jpg/512x512bb.jpg");
     expect(payload?.activity.largeImageText).toBe("Self Aware");
+  });
+
+  it("adds an Apple Music button when a track URL is available", () => {
+    const payload = createPresencePayload(
+      createTrack({
+        trackUrl: "https://music.apple.com/de/album/feel/123456789?i=987654321"
+      })
+    );
+
+    expect(payload?.activity.buttons).toEqual([
+      {
+        label: "In Apple Music öffnen",
+        url: "https://music.apple.com/de/album/feel/123456789?i=987654321"
+      }
+    ]);
   });
 });
 
@@ -76,6 +91,7 @@ function createTrack(overrides: Partial<TrackState> = {}): TrackState {
     albumTitle: "",
     artwork: null,
     artworkUrl: null,
+    trackUrl: null,
     playbackState: "playing",
     positionSeconds: 0,
     durationSeconds: 180,
